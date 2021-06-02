@@ -1,0 +1,19 @@
+- name: update yum cache
+  yum:
+    update_cache: yes
+  become: yes
+  ignore_errors: yes
+
+- name: update all packages
+  yum:
+    name: '*'
+    state: latest
+    exclude: msodbcsql*, mssql-tools*
+  become: yes
+
+- name: install required packages
+  yum:
+    name:
+      - rsync
+    state: present
+  become: yes

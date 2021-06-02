@@ -1,0 +1,77 @@
+- name: git checkout codes
+  git:
+    repo: 'git@github.com:thermofisher/dscops-epo-portal.git'
+    depth: 1
+    version: master
+    dest: 'vars/b2b_automation_code/'
+    key_file: '~/.ssh/id_rsa_github_boxingpengthermofisher'
+    accept_hostkey: yes
+    force: yes
+  delegate_to: 127.0.0.1
+
+- name: remove useless files
+  file:
+    path: vars/b2b_automation_code/.git
+    state: absent
+  delegate_to: 127.0.0.1
+
+- name: get remote host
+  set_fact:
+    ip_address: '{{ hostvars[inventory_hostname].ansible_host }}'
+  when: hostvars[inventory_hostname].ansible_host is defined
+
+- name: modify allowed hosts
+  lineinfile:
+    path: 'vars/b2b_automation_code/b2b_automation/settings.py'
+    regexp: "^ALLOWED_HOSTS"
+    line: "ALLOWED_HOSTS = ['{{ ip_address }}', '127.0.0.1']"
+  become: yes
+  delegate_to: 127.0.0.1
+
+- name: remove exist code directory
+  file:
+    path: '{{ code_path }}'
+    state: absent
+    force: yes
+  become: yes
+
+- name: create code directory
+  file:
+    path: '{{ code_path }}'
+    state: directory
+  become: yes
+
+- name: upload codes files
+  block:
+    - name: copy codes files to tmp path
+      synchronize:
+        src: 'vars/b2b_automation_code/'
+        dest: '/tmp/b2b_automation_code/'
+        recursive: yes
+        rsync_opts:
+          - '--exclude=.gitkeep'
+          - '--exclude=__pycache__'
+    - name: copy codes files to target path
+      copy:
+        src: '/tmp/b2b_automation_code/'
+        dest: '{{ code_path }}'
+        remote_src: yes
+      become: yes
+  always:
+    - name: remove codes files in tmp path
+      file:
+        path: '/tmp/b2b_automation_code/'
+        state: absent
+    - name: remove codes files in local
+      file:
+        path: 'vars/b2b_automation_code/'
+        state: absent
+      delegate_to: 127.0.0.1
+
+- name: change workspace permissions
+  file:
+    path: '{{ workspace_path }}'
+    mode: u=rwX,g=rwX,o=rX
+    state: directory
+    recurse: yes
+  become: yes

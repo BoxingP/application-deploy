@@ -1,3 +1,32 @@
 - name: get hosts facts
   hosts: all
   gather_facts: yes
+
+- name: set up application
+  hosts: centos
+  gather_facts: no
+  vars:
+    git_repo: git@github.com:thermofisher/dscops-epo-ebusiness.git
+    workspace_path: '/usr/local/src/b2b_automation'
+    virtualenv: '{{ workspace_path }}/venv'
+    code_path: '{{ workspace_path }}/code'
+  tasks:
+    - name: init server environment
+      include_role:
+        name: init_server_environment
+    - name: init workspace
+      import_tasks: tasks/init_workspace.yaml
+    - name: create python environment
+      include_role:
+        name: create_python_environment
+    - name: install odbc driver
+      include_role:
+        name: install_odbc_driver_for_sql_serverr
+    - name: set up apache
+      include_role:
+        name: set_up_apache
+    - name: set up firewall
+      include_role:
+        name: set_up_firewall
+    - name: disable selinux
+      import_tasks: tasks/disable_selinux.yaml

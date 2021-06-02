@@ -1,0 +1,114 @@
+- name: install apache
+  package:
+    name: httpd
+    state: present
+  become: yes
+
+- name: install required packages, step 1
+  yum:
+    name:
+      - mod_ssl
+      - centos-release-scl
+    state: present
+  become: yes
+
+- name: install required packages, step 2
+  yum:
+    name:
+      - rh-python36-mod_wsgi
+    state: present
+  become: yes
+
+- name: copy mod_wsgi files, step 1
+  copy:
+    src: /opt/rh/httpd24/root/usr/lib64/httpd/modules/mod_rh-python36-wsgi.so
+    dest: /lib64/httpd/modules/mod_rh-python36-wsgi.so
+    owner: root
+    group: root
+    mode: '0644'
+    remote_src: yes
+  become: yes
+
+- name: copy mod_wsgi files, step 2
+  copy:
+    src: /opt/rh/httpd24/root/etc/httpd/conf.modules.d/10-rh-python36-wsgi.conf
+    dest: /etc/httpd/conf.modules.d/10-rh-python36-wsgi.conf
+    owner: root
+    group: root
+    mode: '0644'
+    remote_src: yes
+  become: yes
+
+- name: backup origin configuration file
+  copy:
+    src: /etc/httpd/conf/httpd.conf
+    dest: '{{ hostvars[inventory_hostname].ansible_env.HOME }}/httpd.conf.backup'
+    remote_src: yes
+
+- name: copy configuration files
+  copy:
+    src: '/usr/share/doc/httpd-2.4.6/{{ item }}'
+    dest: '/etc/httpd/conf.d/{{ item }}'
+    owner: root
+    group: root
+    mode: '0644'
+    remote_src: yes
+  with_fileglob:
+    - httpd-info.conf
+    - proxy-html.conf
+  become: yes
+
+- name: install django configuration file
+  template:
+    src: django.conf.j2
+    dest: /etc/httpd/conf.d/django.conf
+    owner: root
+    group: root
+    mode: '0644'
+    force: yes
+  become: yes
+  notify: restart apache
+
+- name: install main configuration file
+  template:
+    src: httpd.conf.j2
+    dest: /etc/httpd/conf/httpd.conf
+    owner: root
+    group: root
+    setype: httpd_config_t
+    mode: '0644'
+    force: yes
+  become: yes
+  notify: restart apache
+
+- name: allow apache to modify files in log path
+  community.general.sefcontext:
+    target: '{{ code_path }}/log(/.*)?'
+    setype: httpd_sys_rw_content_t
+    state: present
+  register: result
+  become: yes
+  when: ansible_facts.selinux is defined and ansible_facts.selinux.status == 'enabled'
+
+- name: apply new selinux file context to filesystem
+  command: 'restorecon -R -v {{ code_path }}/log'
+  become: yes
+  when: result is changed
+
+- name: change log path permissions
+  file:
+    path: '{{ code_path }}/log'
+    mode: u=rwX,g=rwX,o=rwX
+    state: directory
+    recurse: yes
+  become: yes
+
+- name: restart apache
+  meta: flush_handlers
+
+- name: ensure apache is running
+  service:
+    name: httpd
+    state: started
+    enabled: true
+  become: yes

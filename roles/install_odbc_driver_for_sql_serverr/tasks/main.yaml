@@ -1,0 +1,40 @@
+- name: add yum repository configuration file for microsoft packages
+  get_url:
+    url: https://packages.microsoft.com/config/rhel/7/prod.repo
+    dest: /etc/yum.repos.d/mssql-release.repo
+  become: yes
+
+- name: remove unixodbc to avoid conflicts
+  yum:
+    name:
+      - unixODBC
+    state: absent
+  become: yes
+
+- name: install msodbcsql and mssql-tools
+  yum:
+    name:
+      - msodbcsql-13.0.1.0-1
+      - mssql-tools-14.0.2.0-1
+    state: present
+  environment:
+    ACCEPT_EULA: 'y'
+  become: yes
+
+- name: install unixODBC-utf16-devel
+  yum:
+    name:
+      - unixODBC-utf16-devel
+    state: present
+  become: yes
+
+- name: create symlinks for tools
+  file:
+    src: '/opt/mssql-tools/bin/{{ item.src }}'
+    dest: '/usr/bin/{{ item.dest }}'
+    state: link
+    force: yes
+  loop:
+    - { src: sqlcmd-13.0.1.0, dest: sqlcmd }
+    - { src: bcp-13.0.1.0, dest: bcp }
+  become: yes

@@ -1,0 +1,21 @@
+- name: permit traffic in public zone for http service
+  ansible.posix.firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+    zone: public
+  become: yes
+
+- name: permit traffic in public zone for https service
+  ansible.posix.firewalld:
+    service: https
+    permanent: yes
+    state: enabled
+    zone: public
+  become: yes
+
+- name: reload firewalld
+  systemd:
+    name: firewalld
+    state: reloaded
+  become: yes

@@ -1,0 +1,22 @@
+LoadModule wsgi_module /usr/lib64/httpd/modules/mod_wsgi.so
+
+<VirtualHost *:80>
+
+    WSGIDaemonProcess b2b_automation python-home={{ virtualenv }} python-path={{ code_path }}/b2b_automation
+    WSGIProcessGroup b2b_automation
+    WSGIScriptAlias / {{ code_path }}/b2b_automation/wsgi.py
+
+    Alias /static/ {{ code_path }}/static/
+    <Directory {{ code_path }}/static>
+        AllowOverride All
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+
+    <Directory {{ code_path }}/b2b_automation>
+        <Files wsgi.py>
+            Require all granted
+        </Files>
+    </Directory>
+
+</VirtualHost>

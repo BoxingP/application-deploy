@@ -1,0 +1,48 @@
+- name: remove unixODBC utf16 to avoid conflicts
+  yum:
+    name:
+      - unixODBC-utf16
+      - unixODBC-utf16-devel
+    state: absent
+  become: yes
+
+- name: install python and related packages
+  yum:
+    name:
+      - python3
+      - python-virtualenv
+      - python3-pip
+      - python3-devel
+      - mysql-devel
+      - python3-wheel
+      - openldap-devel
+      - "@Development tools"
+      - unixODBC-devel
+    state: present
+  become: yes
+
+- name: upgrade pip and related
+  pip:
+    name:
+      - pip
+      - setuptools
+      - wheel
+    state: latest
+    virtualenv: '{{ virtualenv }}'
+    virtualenv_command: /usr/bin/python3 -m venv
+  become: yes
+
+- name: create python virtualenv
+  pip:
+    requirements: '{{ code_path }}/requirements.txt'
+    virtualenv: '{{ virtualenv }}'
+    virtualenv_command: /usr/bin/python3 -m venv
+  become: yes
+
+- name: change python permissions
+  file:
+    path: '{{ virtualenv }}'
+    mode: u=rwX,g=rwX,o=rX
+    state: directory
+    recurse: yes
+  become: yes
